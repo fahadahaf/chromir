@@ -1,2 +1,2 @@
 # ZiFIR
-role of Zinc Finger transcription factors in regulating Intron Retention
+role of Zinc Finger transcription factors in the regulation of Intron Retention.
