@@ -1,2 +1,2 @@
-# ZnFIR
+# chromir
 
