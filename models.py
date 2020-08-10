@@ -56,8 +56,6 @@ class Basset(nn.Module):
 
 
     def forward(self, inputs):
-        
-        
         output = self.layer1(inputs)
         output = self.dropout1(output)
 
