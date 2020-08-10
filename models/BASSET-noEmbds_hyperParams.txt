@@ -1,0 +1,18 @@
+inputchannels	4	#number of input channels; 4 in case of DNA input
+Conv1numfilters	200	#number of 1st CNN layer filters
+Conv1filtersize	13	#size of the 1st CNN layer filters
+Conv1padding	6	#number of padded 0's to each end (future: auto-infer, see utils for a function)
+Conv1usesoftplus	True	#use Softplus() as activation in the first CNN layer (ReLU is used if False)
+Conv1maxpoolsize	6	#maxpooling size for the 1st CNN layer
+Conv2numfilters 100     #number of 2nd CNN layer filters
+Conv2filtersize 5      #size of the 2nd CNN layer filters
+Conv2padding    2       #number of padded 0's to each end (future: auto-infer, a little tricky: 100 was layer 1 output size so (100-(100-5+1))/2=2
+Conv2maxpoolsize        1       #maxpooling size for the 2nd CNN layer. 1 means no maxpooling (future: don't maxpool if its 1, add to code)
+Conv3numfilters 50     #number of 3rd CNN layer filters
+Conv3filtersize 9      #size of the 3rd CNN layer filters
+Conv3padding    4       #number of padded 0's to each end (future: auto-infer, a little tricky: 100 was layer 2 output size so (100-(100-9+1))/2=4
+Conv3maxpoolsize        2       #maxpooling size for the 2st CNN layer. 1 means no maxpooling (future: don't maxpool if its 1, add to code)
+Fc1inputsize	2500	#size of the 1st FC layer (future: auto-infer, flattening conv 3 output: size=50 and 50 filters in layer 3 so 50x50 = 2500)
+Fc1outputsize	800	#output size of the 1st FC layer
+Fc2outputsize	300	#output size of the 2nd FC layer
+numtargets	2	#number of targets (binary classification in this case)
