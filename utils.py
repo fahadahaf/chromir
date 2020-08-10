@@ -15,4 +15,4 @@ def get_params_dict(param_data):
 
 def calculate_padding(inputLength, filterSize):
     padding = inputLength - (inputLength - filterSize + 1)
-    return int(padding/2) #appended to both sides to half of what is needed
+    return int(padding/2) #appended to both sides the half of what is needed
