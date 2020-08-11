@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.autograd import Function # import Function to create custom activations
-from torch.nn.parameter import Parameter # import Parameter to create custom activations with learnable parameters
 from torch import optim # import optimizers for demonstrations
 
 
