@@ -129,18 +129,18 @@ class PositionalEncoding(nn.Module):
 class AttentionNet: #for the model that uses CNN, RNN (optionally), and MH attention
     def __init__(self, params, wvmodel=None):
         super(AttentionNet, self).__init__()
-		self.numMultiHeads = params['numMultiHeads']
+		self.numMultiHeads = params['num_multiheads']
 		self.SingleHeadSize = params['singlehead_size']#SingleHeadSize
 		self.MultiHeadSize = params['multihead_size']#MultiHeadSize
-		self.usepooling = params['usepooling']
+		self.usepooling = params['use_pooling']
 		self.pooling_val = params['pooling_val']
 		self.readout_strategy = params['readout_strategy']
-		self.kmerSize = params['kmer_size']
+		self.kmerSize = params['embd_kmersize']
 		self.useRNN = params['use_RNN']
 		self.useCNN = params['use_CNN']
 		self.usePE = params['use_posEnc']
 		self.useCNNpool = params['use_CNNpool']
-		self.RNN_hiddenSize = params['RNNhiddenSize']
+		self.RNN_hiddenSize = params['RNN_hiddensize']
 		self.numCNNfilters = params['CNN_filters']
 		self.filterSize = params['CNN_filtersize']
 		self.CNNpoolSize = params['CNN_poolsize']
