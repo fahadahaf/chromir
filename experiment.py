@@ -195,19 +195,15 @@ def get_indices(dataset_size, test_split, output_dir, shuffle_data=True, seed_va
     return train_indices, test_indices, valid_indices
 
 
-def run_experiment(device, arg_space, output_dir, params):
+def load_datasets(arg_space):
     input_prefix = arg_space.inputprefix
     w2v_path = arg_space.wvPath #'Word2Vec_Models/'
-    net_type = arg_space.netType
-
-    num_labels = params['num_classes']
-    get_CNNout = params['get_CNNout']
-    get_sequences = params['get_seqs']
-    batch_size = params['batch_size']
-    max_epochs = params['num_epochs']
-    use_embds = params['use_embeddings']
-    prefix = 'modelRes' #Using generic, not sure if we need it as an argument or part of the params dict
-
+    output_dir = arg_space.directory
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    #save arguments to keep record
+    with open(output_dir+'/arguments.txt','w') as f:
+	    f.writelines(str(argSpace))
     test_split = arg_space.splitperc/100
     if arg_space.verbose:
         print("test/validation split val: %.2f"%test_split)
@@ -217,12 +213,11 @@ def run_experiment(device, arg_space, output_dir, params):
             final_dataset = DatasetLazyLoad(input_prefix)
         else:
             final_dataset = DatasetLoadAll(input_prefix)
-
-        train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir, shuffle_data=True, seed_val=100)
+        train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
         modelvw = None
     else:
         data_all = DatasetLoadAll(input_prefix, for_embeddings=True)
-        train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir, shuffle_data=True, seed_val=100)
+        train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
         final_dataset = pd.merge(data_all.df_seq_final, data_all.df, on='header')[['sequence',7]]
         final_dataset = DatasetEmbd(final_dataset.values.tolist(),modelwv,kmer_len,stride)
         w2v_filename = 'Word2Vec_Model_kmerLen'+str(params['embd_kmersize'])+'_win'+str(params['embd_window'])+'_embSize'+str(params['embd_size'])
@@ -234,15 +229,28 @@ def run_experiment(device, arg_space, output_dir, params):
     train_loader = DataLoader(data_all, batch_size = batchSize, sampler = train_sampler)
     test_loader = DataLoader(data_all, batch_size = batchSize, sampler = test_sampler)
     valid_loader = DataLoader(data_all, batch_size = batchSize, sampler = valid_sampler)
+    return train_loader, test_loader, valid_loader, modelwv, output_dir
+
+
+def run_experiment(device, arg_space, params):
+    net_type = arg_space.netType
+
+    num_labels = params['num_classes']
+    get_CNNout = params['get_CNNout']
+    get_sequences = params['get_seqs']
+    batch_size = params['batch_size']
+    max_epochs = params['num_epochs']
+    use_embds = params['use_embeddings']
+    prefix = 'modelRes' #Using generic, not sure if we need it as an argument or part of the params dict
+
+    train_loader, test_loader, valid_loader, modelwv, output_dir = load_datasets(arg_space)
 
     if net_type == 'basset':
         net = Basset(wvmodel=modelwv).to(device)
     else:
         net = AttentionNet(wvmodel=modelwv).to(device)
-    
     criterion = nn.CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(net.parameters())
-
     ##-------Main train/test loop----------##
     if arg_space.mode == 'train':
         best_valid_loss = np.inf
@@ -282,21 +290,19 @@ def run_experiment(device, arg_space, output_dir, params):
         if arg_space.verbose:
             print("Test Loss: %.3f and AUC: %.2f"%(test_loss, auc_test), "\n")
         auprc_test = metrics.average_precision_score(labels,preds)
-
         some_res = [['Best_Valid_Loss','Best_Valid_AUC','Test_Loss','Test_AUC', 'Test_AUPRC']]
         some_res.append([best_valid_loss,best_valid_auc,test_loss,auc_test,auprc_test])
-
+        #---Calculate roc and prc values---#
         fpr,tpr,thresholds = metrics.roc_curve(labels,preds)
         precision,recall,thresholdsPR = metrics.precision_recall_curve(labels,preds)
         roc_dict = {'fpr':fpr, 'tpr':tpr, 'thresholds':thresholds}
         prc_dict = {'precision':precision, 'recall':recall, 'thresholds':thresholdsPR}
-
+        #---Store results----#
         with open(output_dir+'/'+prefix+'_roc.pckl','wb') as f:
 	        pickle.dump(roc_dict,f)
         with open(output_dir+'/'+prefix+'_prc.pckl','wb') as f:
 	        pickle.dump(prc_dict,f)
         np.savetxt(output_dir+'/'+prefix+'_results.txt',some_res,fmt='%s',delimiter='\t')
-
         return res_test
         
 
@@ -308,17 +314,11 @@ def main():
     cudnn.benchmark = True
 
     arg_space = parseArgs()
-    output_dir = arg_space.directory
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    #save arguments to keep record
-    with open(output_dir+'/arguments.txt','w') as f:
-	    f.writelines(str(argSpace))
 
     #create params dictionary
     params_dict = get_params_dict(argSpace.hparamfile)
 
-    test_resBlob = run_experiment(device, arg_space, output_dir, params_dict)
+    test_resBlob = run_experiment(device, arg_space, params_dict)
 
 
 if __name__ == "__main__":
