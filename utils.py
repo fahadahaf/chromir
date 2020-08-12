@@ -1,4 +1,7 @@
-def get_params_dict(param_data):
+import numpy as np
+
+def get_params_dict(params_path):
+    param_data = np.loadtxt(params_path, dtype=str, delimiter='\t')
     params = {}
     for entry in param_data:
         if entry[1] == 'False':
