@@ -37,7 +37,7 @@ class Basset(nn.Module):
             self.numInputChannels = self.embSize
 
         self.layer1  = nn.Sequential(
-            nn.Conv1d(in_channels=self.numInputChannel,
+            nn.Conv1d(in_channels=self.numInputChannels,
                       out_channels=self.CNN1filters,
                       kernel_size=self.CNN1filterSize,
                       padding=self.CNN1padding,

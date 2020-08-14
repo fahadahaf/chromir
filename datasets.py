@@ -1,4 +1,9 @@
+import numpy as np
+import pandas as pd
+import random
 import torch
+from fastprogress import progress_bar
+from random import randint
 from torch.utils.data import Dataset
 
 
@@ -69,7 +74,7 @@ class DatasetLoadAll(Dataset):
     def one_hot_encode_labels(self,y):
         lbArr = np.zeros(self.num_labels)
         lbArr[y] = 1
-        return lbArr.astype(np.float)
+        return lbArr.astype(np.long)
     
     def __getitem__(self, idx):
         return self.Header[idx],self.Seqs[idx],self.One_hot_Encoded_Tensors[idx],self.Label_Tensors[idx]
@@ -117,7 +122,7 @@ class DatasetLazyLoad(Dataset):
     def one_hot_encode_labels(self,y):
         lbArr = np.zeros(self.num_labels)
         lbArr[y] = 1
-        return lbArr.astype(np.float)
+        return lbArr.astype(np.long)
     
     def __getitem__(self, idx):
         if self.num_labels == 2:
@@ -142,24 +147,25 @@ class DatasetLazyLoad(Dataset):
 
 #code borrowed from DeepRAM work
 class DatasetEmbd(Dataset):
-    def __init__(self,xy=None,model=None,kmer_len=5,stride=2): 
+    def __init__(self, xy=None, model=None, kmer_len=5, stride=1): 
         self.kmer_len= kmer_len
         self.stride= stride
-        data=[el[0] for el in xy]
-        self.headers = [h[-1] for h in xy]
+        data=[el[1] for el in xy]
+        self.headers = [h[0] for h in xy]
+        self.seqs = [h[1] for h in xy]
         words_doc= self.Gen_Words(data,self.kmer_len,self.stride)
         #print(words_doc[0])
         x_data=[self.convert_data_to_index(el,model.wv) for el in words_doc]
         #print(x_data.shape)
        
-        self.x_data = np.asarray(x_data,dtype=np.float)
-        self.y_data = np.asarray([el[1] for el in xy ],dtype=np.long)
-        self.x_data = torch.LongTensor(self.x_data)
+        self.x_data = np.asarray(x_data,dtype=np.long)
+        self.y_data = np.asarray([el[-1] for el in xy ],dtype=np.long)
+        self.x_data = torch.Tensor(self.x_data)
         self.y_data = torch.from_numpy(self.y_data)
         self.len=len(self.x_data)
       
     def __getitem__(self, index):
-        return self.headers[index], self.x_data[index], self.y_data[index]
+        return self.headers[index], self.seqs[index], self.x_data[index], self.y_data[index]
 
     def __len__(self):
         return self.len

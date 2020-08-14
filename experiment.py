@@ -1,6 +1,9 @@
 import gensim
 import numpy as np
+import os
 import pandas as pd
+import pdb
+import pickle
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -96,15 +99,18 @@ def parseArgs():
 ###########################################################################################################################
 #--------------------------------------------Train and Evaluate Functions-------------------------------------------------#
 ###########################################################################################################################
-def trainRegular(model, device, iterator, optimizer, criterion):
+def trainRegular(model, device, iterator, optimizer, criterion, useEmb=False):
     model.train()
     running_loss = 0.0
     train_auc = []
     for batch_idx, (headers, seqs, data, target) in enumerate(iterator):
         #pdb.set_trace()
-        data, target = data.to(device,dtype=torch.float), target.to(device,dtype=torch.long)
+        if useEmb:
+            data, target = data.to(device,dtype=torch.long), target.to(device,dtype=torch.long)
+        else:
+            data, target = data.to(device,dtype=torch.float), target.to(device,dtype=torch.long)
         optimizer.zero_grad()
-        outputs,_ = model(data)
+        outputs = model(data)
         loss = criterion(outputs, target)
         #loss = F.binary_cross_entropy(outputs, target)
         labels = target.cpu().numpy()
@@ -122,10 +128,11 @@ def trainRegular(model, device, iterator, optimizer, criterion):
         optimizer.step()
         running_loss += loss.item()
         #return outputs
-    return running_loss/len(train_loader),train_auc
+    return running_loss/len(iterator),train_auc
 
 
-def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=False, storeCNNout = False, getSeqs = False):
+def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=False, storeCNNout = False, getSeqs = False, useEmb=False):
+    #pdb.set_trace()
     running_loss = 0.0
     valid_auc = [] 
     roc = np.asarray([[],[]]).T
@@ -140,7 +147,10 @@ def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=Fals
     
     with torch.no_grad():
         for batch_idx, (headers, seqs, data, target) in enumerate(iterator):
-            data, target = data.to(device,dtype=torch.float), target.to(device,dtype=torch.long)
+            if useEmb:
+                data, target = data.to(device,dtype=torch.long), target.to(device,dtype=torch.long)
+            else:
+                data, target = data.to(device,dtype=torch.float), target.to(device,dtype=torch.long)
             # Model computations
             outputs = net(data)
             loss = criterion(outputs, target)
@@ -158,9 +168,12 @@ def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=Fals
                 valid_auc.append(0.0)
             running_loss += loss.item()
         
-            outputCNN = CNNlayer(data).cpu().detach().numpy()
             if getCNN == True:
-                outputCNN = CNNlayer(data)
+                try: #if the network has an embedding layer (input must be embedded as well)
+                    data = net.embedding(data)
+                    outputCNN = CNNlayer(data.permute(0,2,1))
+                except:
+                    outputCNN = CNNlayer(data)
                 if storeCNNout == True:
                     if not os.path.exists(out_dirc):
                         os.makedirs(out_dirc)	
@@ -195,40 +208,41 @@ def get_indices(dataset_size, test_split, output_dir, shuffle_data=True, seed_va
     return train_indices, test_indices, valid_indices
 
 
-def load_datasets(arg_space):
+def load_datasets(arg_space, use_embds, batchSize, kmer_len, embd_size, embd_window):
     input_prefix = arg_space.inputprefix
-    w2v_path = arg_space.wvPath #'Word2Vec_Models/'
-    output_dir = arg_space.directory
+    output_dir = 'results/'+arg_space.directory
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     #save arguments to keep record
     with open(output_dir+'/arguments.txt','w') as f:
-	    f.writelines(str(argSpace))
+	    f.writelines(str(arg_space))
     test_split = arg_space.splitperc/100
     if arg_space.verbose:
         print("test/validation split val: %.2f"%test_split)
 
+    modelwv = None
     if use_embds == False:
         if arg_space.deskLoad:
             final_dataset = DatasetLazyLoad(input_prefix)
         else:
             final_dataset = DatasetLoadAll(input_prefix)
-        train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
-        modelvw = None
+        #train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
     else:
-        data_all = DatasetLoadAll(input_prefix, for_embeddings=True)
-        train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
-        final_dataset = pd.merge(data_all.df_seq_final, data_all.df, on='header')[['sequence',7]]
-        final_dataset = DatasetEmbd(final_dataset.values.tolist(),modelwv,kmer_len,stride)
-        w2v_filename = 'Word2Vec_Model_kmerLen'+str(params['embd_kmersize'])+'_win'+str(params['embd_window'])+'_embSize'+str(params['embd_size'])
+        w2v_path = arg_space.wvPath+'/' if arg_space.wvPath[-1]!='/' else arg_space.wvPath #'Word2Vec_Models/'
+        w2v_filename = 'Word2Vec_Model_kmerLen'+str(kmer_len)+'_win'+str(embd_window)+'_embSize'+str(embd_size)
         modelwv = Word2Vec.load(w2v_path+w2v_filename)
-
+        data_all = DatasetLoadAll(input_prefix, for_embeddings=True)
+        final_dataset = pd.merge(data_all.df_seq_final, data_all.df, on='header')[['header','sequence',7]]
+        final_dataset = DatasetEmbd(final_dataset.values.tolist(), modelwv, kmer_len)
+        #train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
+    #pdb.set_trace()    
+    train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
     train_sampler = SubsetRandomSampler(train_indices)
     test_sampler = SubsetRandomSampler(test_indices)
     valid_sampler = SubsetRandomSampler(valid_indices)
-    train_loader = DataLoader(data_all, batch_size = batchSize, sampler = train_sampler)
-    test_loader = DataLoader(data_all, batch_size = batchSize, sampler = test_sampler)
-    valid_loader = DataLoader(data_all, batch_size = batchSize, sampler = valid_sampler)
+    train_loader = DataLoader(final_dataset, batch_size = batchSize, sampler = train_sampler)
+    test_loader = DataLoader(final_dataset, batch_size = batchSize, sampler = test_sampler)
+    valid_loader = DataLoader(final_dataset, batch_size = batchSize, sampler = valid_sampler)
     return train_loader, test_loader, valid_loader, modelwv, output_dir
 
 
@@ -241,14 +255,22 @@ def run_experiment(device, arg_space, params):
     batch_size = params['batch_size']
     max_epochs = params['num_epochs']
     use_embds = params['use_embeddings']
+    kmer_len = None
+    embd_size = None
+    embd_window = None
+    if use_embds:
+        kmer_len = params['embd_kmersize']
+        embd_size = params['embd_size']
+        embd_window = params['embd_window']
+
     prefix = 'modelRes' #Using generic, not sure if we need it as an argument or part of the params dict
 
-    train_loader, test_loader, valid_loader, modelwv, output_dir = load_datasets(arg_space)
+    train_loader, test_loader, valid_loader, modelwv, output_dir = load_datasets(arg_space, use_embds, batch_size, kmer_len, embd_size, embd_window)
 
     if net_type == 'basset':
-        net = Basset(wvmodel=modelwv).to(device)
+        net = Basset(params, wvmodel=modelwv).to(device)
     else:
-        net = AttentionNet(wvmodel=modelwv).to(device)
+        net = AttentionNet(params, wvmodel=modelwv).to(device)
     criterion = nn.CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(net.parameters())
     ##-------Main train/test loop----------##
@@ -256,8 +278,8 @@ def run_experiment(device, arg_space, params):
         best_valid_loss = np.inf
         best_valid_auc = np.inf
         for epoch in progress_bar(range(1, max_epochs + 1)):
-            res_train = trainRegular(net, device, train_loader, optimizer, criterion)
-            res_valid = evaluateRegular(net, device, valid_loader, criterion)
+            res_train = trainRegular(net, device, train_loader, optimizer, criterion, useEmb=use_embds)
+            res_valid = evaluateRegular(net, device, valid_loader, criterion, useEmb=use_embds)
             res_train_auc = np.asarray(res_train[1]).mean()
             res_train_loss = res_train[0]
             res_valid_auc = np.asarray(res_valid[1]).mean()
@@ -272,38 +294,38 @@ def run_experiment(device, arg_space, params):
                         'optimizer_state_dict':optimizer.state_dict(),
                         'loss':res_valid_loss
                         },output_dir+'/'+prefix+'_model')
-    else:
-        try:    
-            checkpoint = torch.load(output_dir+'/model')
-            net.load_state_dict(checkpoint['model_state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            epoch = checkpoint['epoch']
-            loss = checkpoint['loss']
-        except:
-            print("No pre-trained model found! Please run with --mode set to train.")
-        res_test = evaluateRegular(net, device, test_loader, criterion, output_dir+"/Stored_Values",
-                                   getCNN=get_CNNout, storeCNN=argParse.storeCNN, getSeqs=get_sequences)
-        test_loss = res_test[0]
-        labels = res_test[2][:,0]
-        preds = res_test[2][:,1]
-        auc_test = metrics.roc_auc_score(labels, preds)
-        if arg_space.verbose:
-            print("Test Loss: %.3f and AUC: %.2f"%(test_loss, auc_test), "\n")
-        auprc_test = metrics.average_precision_score(labels,preds)
-        some_res = [['Best_Valid_Loss','Best_Valid_AUC','Test_Loss','Test_AUC', 'Test_AUPRC']]
-        some_res.append([best_valid_loss,best_valid_auc,test_loss,auc_test,auprc_test])
-        #---Calculate roc and prc values---#
-        fpr,tpr,thresholds = metrics.roc_curve(labels,preds)
-        precision,recall,thresholdsPR = metrics.precision_recall_curve(labels,preds)
-        roc_dict = {'fpr':fpr, 'tpr':tpr, 'thresholds':thresholds}
-        prc_dict = {'precision':precision, 'recall':recall, 'thresholds':thresholdsPR}
-        #---Store results----#
-        with open(output_dir+'/'+prefix+'_roc.pckl','wb') as f:
-	        pickle.dump(roc_dict,f)
-        with open(output_dir+'/'+prefix+'_prc.pckl','wb') as f:
-	        pickle.dump(prc_dict,f)
-        np.savetxt(output_dir+'/'+prefix+'_results.txt',some_res,fmt='%s',delimiter='\t')
-        return res_test
+    try:    
+        checkpoint = torch.load(output_dir+'/'+prefix+'_model')
+        net.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
+    except:
+        print("No pre-trained model found! Please run with --mode set to train.")
+        return
+    res_test = evaluateRegular(net, device, test_loader, criterion, output_dir+"/Stored_Values",
+                               getCNN=get_CNNout, storeCNNout=arg_space.storeCNN, getSeqs=get_sequences, useEmb=use_embds)
+    test_loss = res_test[0]
+    labels = res_test[2][:,0]
+    preds = res_test[2][:,1]
+    auc_test = metrics.roc_auc_score(labels, preds)
+    if arg_space.verbose:
+        print("Test Loss: %.3f and AUC: %.2f"%(test_loss, auc_test), "\n")
+    auprc_test = metrics.average_precision_score(labels,preds)
+    some_res = [['Test_Loss','Test_AUC', 'Test_AUPRC']]
+    some_res.append([test_loss,auc_test,auprc_test])
+    #---Calculate roc and prc values---#
+    fpr,tpr,thresholds = metrics.roc_curve(labels,preds)
+    precision,recall,thresholdsPR = metrics.precision_recall_curve(labels,preds)
+    roc_dict = {'fpr':fpr, 'tpr':tpr, 'thresholds':thresholds}
+    prc_dict = {'precision':precision, 'recall':recall, 'thresholds':thresholdsPR}
+    #---Store results----#
+    with open(output_dir+'/'+prefix+'_roc.pckl','wb') as f:
+        pickle.dump(roc_dict,f)
+    with open(output_dir+'/'+prefix+'_prc.pckl','wb') as f:
+        pickle.dump(prc_dict,f)
+    np.savetxt(output_dir+'/'+prefix+'_results.txt',some_res,fmt='%s',delimiter='\t')
+    return res_test
         
 
 
@@ -312,12 +334,9 @@ def main():
     use_cuda = torch.cuda.is_available()
     device = torch.device(torch.cuda.current_device() if use_cuda else "cpu")
     cudnn.benchmark = True
-
     arg_space = parseArgs()
-
     #create params dictionary
-    params_dict = get_params_dict(argSpace.hparamfile)
-
+    params_dict = get_params_dict(arg_space.hparamfile)
     test_resBlob = run_experiment(device, arg_space, params_dict)
 
 
