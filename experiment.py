@@ -26,74 +26,11 @@ from torch import optim # import optimizers for demonstrations
 
 #local imports
 from datasets import DatasetLoadAll, DatasetLazyLoad, DatasetEmbd
+from extract_motifs import get_motif
 from models import Basset, AttentionNet
 from utils import get_params_dict
 
 
-
-###########################################################################################################################
-#--------------------------------------------------Argument Parser--------------------------------------------------------#
-###########################################################################################################################
-def parseArgs():
-    """Parse command line arguments
-    
-    Returns
-    -------
-    a : argparse.ArgumentParser
-    
-    """
-    parser = ArgumentParser(description='Main chromIR script to run experiments.')
-    parser.add_argument('-v', '--verbose',dest='verbose', action='store_true', 
-                        default=False, help="verbose output [default is quiet running]")
-    parser.add_argument('-o','--outDir',dest='directory',type=str,
-                        action='store',help="output directory", default='')
-    parser.add_argument('-m','--mode', dest='mode',type=str,
-                        action='store',help="Mode of operation: train or test.", default='train')     
-    parser.add_argument('--deskload', dest='deskLoad',
-                        action='store_true',default=False,
-                        help="Load dataset from desk. If false, the data is converted into tensors and kept in main memory (not recommended for large datasets).")  
-    parser.add_argument('-w','--numworkers',dest='numWorkers',type=int,
-                        action='store',help="Number of workers used in data loader. For loading from the desk, use more than 1 for faster fetching.", default=1)        
-    parser.add_argument('--splitperc',dest='splitperc',type=float, action='store',
-                        help="Pecentages of test, and validation data splits, eg. 10 for 10 percent data used for testing and validation.", default=10)
-    parser.add_argument('--motifanalysis', dest='motifAnalysis',
-                        action='store_true',default=False,
-                        help="Analyze CNN filters for motifs and search them against known TF database.")
-    parser.add_argument('--scorecutoff',dest='scoreCutoff',type=float,
-                        action='store',default=0.65,
-                        help="In case of binary labels, the positive probability cutoff to use.")
-    parser.add_argument('--tomtompath',dest='tomtomPath',
-                        type=str,action='store',default=None,
-                        help="Provide path to where TomTom (from MEME suite) is located.") 
-    parser.add_argument('--database',dest='tfDatabase',type=str,action='store',
-                        help="Search CNN motifs against known TF database. Default is Human CISBP TFs.", default=None)
-    parser.add_argument('--annotate',dest='annotateTomTom',type=str,action='store',
-                        default=None, help="Annotate tomtom motifs. The options are: 1. path to annotation file, 2. No (not to annotate the output) 3. None (default where human CISBP annotations are used)")
-    parser.add_argument('-s','--store', dest='storeCNN',
-                        action='store_true',default=False,
-                        help="Store per batch CNN outpout matrices. If false, the are kept in the main memory.")
-    parser.add_argument('--tomtomdist', dest='tomtomDist',type=str,
-                        action='store',default = 'pearson',
-                        help="TomTom distance parameter (pearson, kullback, ed etc). Default is pearson. See TomTom help from MEME suite.")
-    parser.add_argument('--tomtompval', dest='tomtomPval',type=float,
-                        action='store',default = 0.05,
-                        help="Adjusted p-value cutoff from TomTom. Default is 0.05.")
-    parser.add_argument('--wvpath',dest='wvPath',
-                        type=str,action='store',default=None,
-                        help="Path to where the word2vec trained embeddings are located. Default is None.")
-    parser.add_argument('--nettype',dest='netType',
-                        type=str,action='store',default='basset',
-                        help="Model type to use: either basset or attention. Default is basset.")                         					
-    parser.add_argument('inputprefix', type=str,
-                        help="Input file prefix for the bed/text file and the corresponding fasta file (sequences).")
-    parser.add_argument('hparamfile',type=str,
-                        help='Name of the hyperparameters file to be used.')
-    
-    args = parser.parse_args()
-    return args
-###########################################################################################################################
-#---------------------------------------------------------End-------------------------------------------------------------#
-###########################################################################################################################
 
 
 ###########################################################################################################################
@@ -194,7 +131,7 @@ def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=Fals
 ###########################################################################################################################
 #---------------------------------------------------------End-------------------------------------------------------------#
 ###########################################################################################################################
-def get_indices(dataset_size, test_split, output_dir, shuffle_data=True, seed_val=100):
+def get_indices(dataset_size, test_split, output_dir, shuffle_data=True, seed_val=100, mode='train'):
     indices = list(range(dataset_size))
     split_val = int(np.floor(test_split*dataset_size))
     if shuffle_data:
@@ -202,13 +139,24 @@ def get_indices(dataset_size, test_split, output_dir, shuffle_data=True, seed_va
         np.random.shuffle(indices)
     train_indices, test_indices, valid_indices = indices[2*split_val:], indices[:split_val], indices[split_val:2*split_val]
     #--save indices for later use, when testing for example---#
-    np.savetxt(output_dir+'/valid_indices.txt',valid_indices,fmt='%s')
-    np.savetxt(output_dir+'/test_indices.txt',test_indices,fmt='%s')
-    np.savetxt(output_dir+'/train_indices.txt',train_indices,fmt='%s')
+    if mode=='train':
+        np.savetxt(output_dir+'/valid_indices.txt', valid_indices, fmt='%s')
+        np.savetxt(output_dir+'/test_indices.txt', test_indices, fmt='%s')
+        np.savetxt(output_dir+'/train_indices.txt', train_indices, fmt='%s')
+    else:
+        try:
+            valid_indices = np.loadtxt(output_dir+'/valid_indices.txt', dtype=int)
+            test_indices = np.loadtxt(output_dir+'/test_indices.txt', dtype=int)
+            train_indices = np.loadtxt(output_dir+'/train_indices.txt', dtype=int)
+        except:
+            print("Error! looks like you haven't trained the model yet. Rerun with --mode train.")
     return train_indices, test_indices, valid_indices
 
 
-def load_datasets(arg_space, use_embds, batchSize, kmer_len, embd_size, embd_window):
+def load_datasets(arg_space, use_embds, batchSize, kmer_len=None, embd_size=None, embd_window=None):
+    """
+    Loads and processes the data.
+    """
     input_prefix = arg_space.inputprefix
     output_dir = 'results/'+arg_space.directory
     if not os.path.exists(output_dir):
@@ -236,7 +184,7 @@ def load_datasets(arg_space, use_embds, batchSize, kmer_len, embd_size, embd_win
         final_dataset = DatasetEmbd(final_dataset.values.tolist(), modelwv, kmer_len)
         #train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
     #pdb.set_trace()    
-    train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir)
+    train_indices, test_indices, valid_indices = get_indices(len(final_dataset), test_split, output_dir, mode=arg_space.mode)
     train_sampler = SubsetRandomSampler(train_indices)
     test_sampler = SubsetRandomSampler(test_indices)
     valid_sampler = SubsetRandomSampler(valid_indices)
@@ -247,6 +195,14 @@ def load_datasets(arg_space, use_embds, batchSize, kmer_len, embd_size, embd_win
 
 
 def run_experiment(device, arg_space, params):
+    """
+    Run the main experiment, that is, load the data and train-test the model and generate/store results.
+
+    Args:
+        device: (torch.device) Specifies the device (either gpu or cpu).
+        arg_space: ArgParser object containing all the user-specified arguments.
+        params: (dict) Dictionary of hyperparameters. 
+    """
     net_type = arg_space.netType
 
     num_labels = params['num_classes']
@@ -254,23 +210,19 @@ def run_experiment(device, arg_space, params):
     get_sequences = params['get_seqs']
     batch_size = params['batch_size']
     max_epochs = params['num_epochs']
-    use_embds = params['use_embeddings']
-    kmer_len = None
-    embd_size = None
-    embd_window = None
+    use_embds = arg_space.useEmbeddings
+    kmer_len, embd_size, embd_window = [None]*3
     if use_embds:
         kmer_len = params['embd_kmersize']
         embd_size = params['embd_size']
         embd_window = params['embd_window']
 
     prefix = 'modelRes' #Using generic, not sure if we need it as an argument or part of the params dict
-
     train_loader, test_loader, valid_loader, modelwv, output_dir = load_datasets(arg_space, use_embds, batch_size, kmer_len, embd_size, embd_window)
-
     if net_type == 'basset':
-        net = Basset(params, wvmodel=modelwv).to(device)
+        net = Basset(params, wvmodel=modelwv, useEmbeddings=use_embds).to(device)
     else:
-        net = AttentionNet(params, wvmodel=modelwv).to(device)
+        net = AttentionNet(params, wvmodel=modelwv, useEmbeddings=use_embds).to(device)
     criterion = nn.CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(net.parameters())
     ##-------Main train/test loop----------##
@@ -301,7 +253,7 @@ def run_experiment(device, arg_space, params):
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
     except:
-        print("No pre-trained model found! Please run with --mode set to train.")
+        print("No pre-trained model found at %s! Please run with --mode set to train."%output_dir)
         return
     res_test = evaluateRegular(net, device, test_loader, criterion, output_dir+"/Stored_Values",
                                getCNN=get_CNNout, storeCNNout=arg_space.storeCNN, getSeqs=get_sequences, useEmb=use_embds)
@@ -326,19 +278,74 @@ def run_experiment(device, arg_space, params):
         pickle.dump(prc_dict,f)
     np.savetxt(output_dir+'/'+prefix+'_results.txt',some_res,fmt='%s',delimiter='\t')
     return res_test
+
+
+def motif_analysis(res_test, argSpace):
+    """
+    Infer regulatory motifs by analyzing the first CNN layer filters.
+
+    Args:
+        res_test: (list) Returned by the experiment function after testing the model.
+        argSpace: The ArgParser object containing values of all the user-specificed arguments.
+    """
+    output_dir = 'results/'+argSpace.directory
+    if not os.path.exists(output_dir):
+        print("Error! output directory doesn't exist.")
+        return   
+    NumExamples = 0
+    pos_score_cutoff = argSpace.scoreCutoff
+    k = 0 #batch number
+    per_batch_labelPreds = res_test[3][k]
+    #per_batch_Embdoutput = res_test[5][k]
+    CNNoutput = res_test[4][k]
+    if argSpace.storeInterCNN:
+        with open(CNNoutput,'rb') as f:
+            CNNoutput = pickle.load(f)
+    Seqs = np.asarray(res_test[-1][k])
+    tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==0 and per_batch_labelPreds[i][1]<(1-pos_score_cutoff))]
+    NumExamples += len(tp_indices)	
+    CNNoutput = CNNoutput[tp_indices]
+    Seqs = Seqs[tp_indices]
+
+    for k in range(1,len(res_test[3])):
+        if argSpace.verbose:
+            print("batch number: ",k)
+            
+        per_batch_labelPreds = res_test[3][k]
+        per_batch_CNNoutput = res_test[4][k]
+        with open(per_batch_CNNoutput,'rb') as f:
+            per_batch_CNNoutput = pickle.load(f)
         
+        per_batch_seqs = np.asarray(res_test[-1][k])
+        tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==0 and per_batch_labelPreds[i][1]<(1-pos_score_cutoff))]
+        NumExamples += len(tp_indices)
+        CNNoutput = np.concatenate((CNNoutput,per_batch_CNNoutput[tp_indices]),axis=0)
+        Seqs = np.concatenate((Seqs,per_batch_seqs[tp_indices]))
+    if argSpace.tfDatabase == None:
+        dbpath = '/s/jawar/h/nobackup/fahad/MEME_SUITE/motif_databases/CIS-BP/Homo_sapiens.meme'
+    else:
+        dbpath = argSpace.tfDatabase
 
+    if argSpace.tomtomPath == None:
+        tomtomPath = '/s/jawar/h/nobackup/fahad/MEME_SUITE/meme-5.0.3/src/tomtom'
+    else:
+        tomtomPath = argSpace.tomtomPath
+    motif_dir = output_dir + '/Motif_Analysis'
+    get_motif(CNNWeights, CNNoutput, Seqs, dbpath, dir1 = motif_dir, embd=argSpace.useEmbeddings,
+                data='DNA', tomtom=tomtomPath, tomtompval=argSpace.tomtomPval, tomtomdist=argSpace.tomtomDist) 
+    ###-----------------Adding TF details to TomTom results----------------###
+    if argSpace.annotateTomTom != 'No':
+        tomtom_res = np.loadtxt(motif_dir+'/tomtom/tomtom.tsv',dtype=str,delimiter='\t')
+        if argSpace.annotateTomTom == None:
+            database = np.loadtxt('../Basset_Splicing_IR-iDiffIR/Analysis_For_none_network-typeB_lotus_posThresh-0.60/MEME_analysis/Homo_sapiens_2019_01_14_4_17_pm/TF_Information_all_motifs.txt',dtype=str,delimiter='\t')
+        else:
+            database = argSpace.annotateTomTom
+        final = []                                     
+        for entry in tomtom_res[1:]:
+            motifID = entry[1]                         
+            res = np.argwhere(database[:,3]==motifID)
+            TFs = ','.join(database[res.flatten(),6])
+            final.append(entry.tolist()+[TFs])
+        np.savetxt(motif_dir+'/tomtom/tomtom_annotated.tsv',final,delimiter='\t',fmt='%s')
+    return motif_dir, NumExamples
 
-def main():
-    #CUDA for pytorch
-    use_cuda = torch.cuda.is_available()
-    device = torch.device(torch.cuda.current_device() if use_cuda else "cpu")
-    cudnn.benchmark = True
-    arg_space = parseArgs()
-    #create params dictionary
-    params_dict = get_params_dict(arg_space.hparamfile)
-    test_resBlob = run_experiment(device, arg_space, params_dict)
-
-
-if __name__ == "__main__":
-    main()

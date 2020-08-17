@@ -8,7 +8,7 @@ from torch import optim # import optimizers for demonstrations
 
 
 class Basset(nn.Module):
-    def __init__(self, params, wvmodel=None):
+    def __init__(self, params, wvmodel=None, useEmbeddings = False):
         super(Basset, self).__init__()
         self.CNN1filters = params['CNN1_filters']
         self.CNN1filterSize = params['CNN1_filtersize']
@@ -27,7 +27,8 @@ class Basset(nn.Module):
         self.FC1outputSize = params['FC1_outputsize']
         self.FC2outputSize = params['FC2_outputsize']
         self.numClasses = params['num_classes']
-        self.useEmbeddings = params['use_embeddings']
+
+        self.useEmbeddings = useEmbeddings
         if not self.useEmbeddings:
             self.numInputChannels = params['input_channels'] #number of channels, one hot encoding
         else:
@@ -126,7 +127,7 @@ class PositionalEncoding(nn.Module):
 
 
 class AttentionNet: #for the model that uses CNN, RNN (optionally), and MH attention
-    def __init__(self, params, wvmodel=None):
+    def __init__(self, params, wvmodel=None, useEmbeddings=False):
         super(AttentionNet, self).__init__()
         self.numMultiHeads = params['num_multiheads']
         self.SingleHeadSize = params['singlehead_size']#SingleHeadSize
@@ -145,7 +146,8 @@ class AttentionNet: #for the model that uses CNN, RNN (optionally), and MH atten
         self.CNNpoolSize = params['CNN_poolsize']
         self.CNNpadding = params['CNN_padding']
         self.numClasses = params['num_classes']
-        self.useEmbeddings = params['use_embeddings']
+        
+        self.useEmbeddings = useEmbeddings
         if not self.useEmbeddings:
             self.numInputChannels = params['input_channels'] #number of channels, one hot encoding
         else:
