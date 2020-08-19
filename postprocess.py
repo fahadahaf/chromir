@@ -33,6 +33,7 @@ def parseArgs():
     args = parser.parse_args()
     return args
 
+
 def roc_prc_curve(arg_space, exp_dict):
     #some colors to be used for individual curves.
     colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'dodgerblue']
@@ -118,7 +119,6 @@ def main():
     params_dict = get_params_dict(arg_space.infofile)
     print(params_dict)
     roc_prc_curve(arg_space, params_dict)
-
 
 
 if __name__ == "__main__":
