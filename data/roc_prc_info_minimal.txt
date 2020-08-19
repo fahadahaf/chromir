@@ -1,0 +1,3 @@
+gkm-SVM|results/Gapped-SVM
+Basset|results/Basset_noEmbd
+CNN-RNN-MHA|results/CNN-RNN-MH_noEmbd

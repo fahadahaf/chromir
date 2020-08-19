@@ -2,78 +2,125 @@ import glob
 import matplotlib.pyplot as plt
 import pickle
 import numpy as np
+import os
 import sys
 
+from argparse import ArgumentParser
 
-def some_processing_func():
-    #final_list = ['Basset-Embds','Basset-noEmbds','MH-PosEnc','CNN-RNN-MH-noPosEnc','RNN-MH-noPosEnc']
-    final_list = {'Basset-noEmbds':['Basset', 'darkorange'],
-                'Basset-Embds':['Basset-E','saddlebrown'],
-                'MH-PosEnc':['MSA','crimson'],
-                'CNN-MH-noPosEnc':['CNN-MSA','rebeccapurple'],
-                'CNN-RNN-MH-noPosEnc':['CNN-RNN-MSA','limegreen'],
-                'RNN-MH-noPosEnc':['RNN-MSA','dodgerblue']}
+from utils import get_params_dict
 
-    all_pickles = glob.glob('Finalzed_Results_TrainTest/*roc.pckl') 
 
-    file_dict = {}
-    for entry in all_pickles:
-        pck_name = entry.split('/')[1].split('_')[0]
-        file_dict[pck_name] = entry
+def parseArgs():
+    """Parse command line arguments
+    
+    Returns
+    -------
+    a : argparse.ArgumentParser
+    
+    """
+    parser = ArgumentParser(description='Post process the ROC and PRC data to generate the corresponding plots.')
+    parser.add_argument('-v', '--verbose',dest='verbose', action='store_true', 
+                        default=False, help="verbose output [default is quiet running]")
+    parser.add_argument('-o','--outDir',dest='out_dir',type=str,
+                        action='store',help="output directory. Default: results/ directory (will be created if doesn't exists.", default='results')
+    parser.add_argument('-t','--type', dest='type',type=str,
+                        action='store',help="Plot type: either ROC or PRC. Default: ROC", default='ROC')
+    parser.add_argument('--curve20',dest='useCurve20', action='store_true', 
+                        default=False, help="Plot ROC/PRC cuve at maxed at 0.2 on X-axis (zoom-in version). Default: False")                        					
+    parser.add_argument('infofile',type=str,
+                        help='The text file containing names and locations of each experiment for which the ROC/PRC curve will be generated.')
+    
+    args = parser.parse_args()
+    return args
 
-    base_FPR = [round(i*0.01,2) for i in range(0,101)]
+def roc_prc_curve(arg_space, exp_dict):
+    #some colors to be used for individual curves.
+    colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'dodgerblue']
+    out_dir = arg_space.out_dir.strip('/')+'/'
 
-    plt.plot([0,1],[0,1],'k--')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
-    ###########for GKMSM###############
-    gkm_file = '/s/jawar/p/nobackup/altsplice1/fahad/Gapped_SVM_Analysis/Encode_IR_DHSs-idiffIR/TrainTest_Split/ROC_data_FPR-TPR.txt'
-    gkm_data = np.loadtxt(gkm_file,dtype=float)
+    pckl_text = ''
+    xval,yval = '',''
+    areaType = ''
+    if arg_space.type == 'ROC':
+        areaType = 'AUC'
+        pckl_text = 'roc'
+        xval,yval = 'fpr','tpr'
+        plt.plot([0,1],[0,1],'k--')
+    elif arg_space.type == 'PRC':
+        areaType = 'AUPRC'
+        pckl_text = 'prc'
+        xval,yval = 'recall','precision'
+        plt.plot([0,1],[0.5,0.5],'k--')
+    else:
+        print('invalid argument! --type can only have one of the following values: ROC or PRC')
+        return
 
-    TPR = gkm_data[:,1]
-    FPR = gkm_data[:,0]
+    count = 0
+    for key in exp_dict:
+        if arg_space.verbose:
+            print('Running for: %s', key)
+        label = key
+        with open(exp_dict[key]+'/modelRes_%s.pckl'%pckl_text, 'rb') as f:
+            pckl = pickle.load(f)
+        stats = np.loadtxt(exp_dict[key]+'/modelRes_results.txt',delimiter='\t',skiprows=1)
 
-    exp_TPR = []
-        
-    for i in range(0, len(base_FPR)):
-        index = np.argwhere(FPR >= base_FPR[i])[0][0]
-        exp_TPR.append(TPR[index])
+        Xval = pckl[xval]
+        Yval =  pckl[yval]
 
-    test_auc = np.loadtxt('/s/jawar/p/nobackup/altsplice1/fahad/Gapped_SVM_Analysis/Encode_IR_DHSs-idiffIR/TrainTest_Split/final_results_TrainTest.txt',dtype=str,skiprows=1)[5]
-    test_auc = round(float(test_auc),2)
-    plt.plot(base_FPR,exp_TPR,lw=1,label='Gapped SVM (AUC = '+str(test_auc)+')',color='dimgrey')
-    ###################################
+        if arg_space.type == 'ROC':
+            test_stat = round(stats[-2],2)
+        else:
+            test_stat = round(stats[-1],2)
+        clr = colors[count]
+        plt.plot(Xval, Yval, lw=1, label='%s (%s = %.2f)'%(label,areaType,test_stat), color=clr)
+        count += 1
 
-    for key in file_dict:
-        if key not in final_list:
-            continue
-        print("Running for: ",key)
-        pckl_name = file_dict[key]
-        with open(pckl_name,'rb') as f:
-            roc_dict = pickle.load(f)
-        
-        TPR = roc_dict['tpr']
-        FPR = roc_dict['fpr']
-        
-        exp_TPR = []
-        
-        for i in range(0, len(base_FPR)):
-            index = np.argwhere(FPR >= base_FPR[i])[0][0]
-            exp_TPR.append(TPR[index])
-        
-        res_data = np.loadtxt('Finalzed_Results_TrainTest/'+key+'_results.txt',delimiter='\t',skiprows=1)
-        
-        test_auc = round(res_data[-2],2)
-        value = final_list[key][0]
-        clr = final_list[key][1]
-        plt.plot(base_FPR,exp_TPR,lw=1,label=value+' (AUC = '+str(test_auc)+')',color=clr)
-            
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    plt.title('ROC curves')
-    plt.legend(loc=4, fontsize=9)#'best')
-    plt.grid(which='major',axis='both',linestyle='--', linewidth=1)
-    plt.savefig('Finalzed_Results_TrainTest/ROC_curves_selected.pdf')
-    plt.savefig('Finalzed_Results_TrainTest/ROC_curves_selected.png')
+
+    plt.grid(which='major',axis='both',linestyle='--', linewidth=1)        
+    if arg_space.useCurve20:
+        plt.xlim(0, 0.2)
+        if arg_space.type == 'ROC':
+            plt.ylim(0, 0.6)
+            plt.xlabel('False positive rate',fontsize=10.5)
+            plt.ylabel('True positive rate',fontsize=10.5)
+            plt.legend(loc=4, fontsize=10.5)
+        else:
+            plt.ylim(0.5, 1)
+            plt.xlabel('Recall',fontsize=10.5)
+            plt.ylabel('Precision',fontsize=10.5)
+            plt.legend(loc=1, fontsize=10.5)
+        #plt.title('Precision-Recall curves')
+        plt.savefig(out_dir+'%s_curves_selected_curve20.pdf'%pckl_text.upper())
+        plt.savefig(out_dir+'%s_curves_selected_curve20.png'%pckl_text.upper())
+    else:
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        if arg_space.type == 'ROC':
+            plt.xlabel('False positive rate',fontsize=10.5)
+            plt.ylabel('True positive rate',fontsize=10.5)
+            plt.legend(loc=4, fontsize=10.5)
+        else:
+            plt.xlabel('Recall',fontsize=10.5)
+            plt.ylabel('Precision',fontsize=10.5)
+            plt.legend(loc=1, fontsize=10.5)
+        #plt.title('Precision-Recall curves')
+        plt.savefig(out_dir+'%s_curves_selected.pdf'%pckl_text.upper())
+        plt.savefig(out_dir+'%s_curves_selected.png'%pckl_text.upper())
     plt.clf()
+
+
+def main():
+    arg_space = parseArgs()
+    #create params dictionary
+    params_dict = get_params_dict(arg_space.infofile)
+    print(params_dict)
+    roc_prc_curve(arg_space, params_dict)
+
+
+
+if __name__ == "__main__":
+    main()
+
