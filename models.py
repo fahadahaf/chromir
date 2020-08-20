@@ -1,10 +1,10 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 from torch.autograd import Variable
 from torch.autograd import Function # import Function to create custom activations
-from torch import optim # import optimizers for demonstrations
+
 
 
 class Basset(nn.Module):
@@ -126,8 +126,8 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-class AttentionNet: #for the model that uses CNN, RNN (optionally), and MH attention
-    def __init__(self, params, wvmodel=None, useEmbeddings=False):
+class AttentionNet(nn.Module): #for the model that uses CNN, RNN (optionally), and MH attention
+    def __init__(self, params, wvmodel=None, useEmbeddings=False, device=None):
         super(AttentionNet, self).__init__()
         self.numMultiHeads = params['num_multiheads']
         self.SingleHeadSize = params['singlehead_size']#SingleHeadSize
@@ -146,6 +146,7 @@ class AttentionNet: #for the model that uses CNN, RNN (optionally), and MH atten
         self.CNNpoolSize = params['CNN_poolsize']
         self.CNNpadding = params['CNN_padding']
         self.numClasses = params['num_classes']
+        self.device = device
         
         self.useEmbeddings = useEmbeddings
         if not self.useEmbeddings:
@@ -224,7 +225,7 @@ class AttentionNet: #for the model that uses CNN, RNN (optionally), and MH atten
             output = torch.cat((F_RNN,R_RNN),2)
             output = self.dropoutRNN(output)
 		
-        attn_concat = torch.Tensor([]).to(device)
+        attn_concat = torch.Tensor([]).to(self.device)
         for i in range(0,self.numMultiHeads):
             query, key, value = self.Q[i](output), self.K[i](output), self.V[i](output)
             attnOut,p_attn = self.attention(query, key, value, dropout=0.2)

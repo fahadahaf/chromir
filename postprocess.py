@@ -22,7 +22,7 @@ def parseArgs():
     parser.add_argument('-v', '--verbose',dest='verbose', action='store_true', 
                         default=False, help="verbose output [default is quiet running]")
     parser.add_argument('-o','--outDir',dest='out_dir',type=str,
-                        action='store',help="output directory. Default: results/ directory (will be created if doesn't exists.", default='results')
+                        action='store',help="output directory. Default: results/ directory (will be created if doesn't exists).", default='results')
     parser.add_argument('-t','--type', dest='type',type=str,
                         action='store',help="Plot type: either ROC or PRC. Default: ROC", default='ROC')
     parser.add_argument('--curve20',dest='useCurve20', action='store_true', 
@@ -67,10 +67,8 @@ def roc_prc_curve(arg_space, exp_dict):
         with open(exp_dict[key]+'/modelRes_%s.pckl'%pckl_text, 'rb') as f:
             pckl = pickle.load(f)
         stats = np.loadtxt(exp_dict[key]+'/modelRes_results.txt',delimiter='\t',skiprows=1)
-
         Xval = pckl[xval]
         Yval =  pckl[yval]
-
         if arg_space.type == 'ROC':
             test_stat = round(stats[-2],2)
         else:
@@ -78,7 +76,6 @@ def roc_prc_curve(arg_space, exp_dict):
         clr = colors[count]
         plt.plot(Xval, Yval, lw=1, label='%s (%s = %.2f)'%(label,areaType,test_stat), color=clr)
         count += 1
-
 
     plt.grid(which='major',axis='both',linestyle='--', linewidth=1)        
     if arg_space.useCurve20:
@@ -117,7 +114,7 @@ def main():
     arg_space = parseArgs()
     #create params dictionary
     params_dict = get_params_dict(arg_space.infofile)
-    print(params_dict)
+    #print(params_dict)
     roc_prc_curve(arg_space, params_dict)
 
 

@@ -105,13 +105,13 @@ def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=Fals
                 valid_auc.append(0.0)
             running_loss += loss.item()
         
-            if getCNN == True:
+            if getCNN:
                 try: #if the network has an embedding layer (input must be embedded as well)
                     data = net.embedding(data)
                     outputCNN = CNNlayer(data.permute(0,2,1))
                 except:
                     outputCNN = CNNlayer(data)
-                if storeCNNout == True:
+                if storeCNNout:
                     if not os.path.exists(out_dirc):
                         os.makedirs(out_dirc)	
                     with open(out_dirc+'/CNNout_batch-'+str(batch_idx)+'.pckl','wb') as f:
@@ -120,7 +120,7 @@ def evaluateRegular(net, device, iterator, criterion, out_dirc=None, getCNN=Fals
                 else:
                     per_batch_CNNoutput[batch_idx] = outputCNN.cpu().detach().numpy()
             
-            if getSeqs == True:
+            if getSeqs:
                 per_batch_testSeqs[batch_idx] = np.column_stack((headers,seqs))
             
     labels = roc[:,0]
@@ -169,7 +169,7 @@ def load_datasets(arg_space, use_embds, batchSize, kmer_len=None, embd_size=None
         print("test/validation split val: %.2f"%test_split)
 
     modelwv = None
-    if use_embds == False:
+    if not use_embds:
         if arg_space.deskLoad:
             final_dataset = DatasetLazyLoad(input_prefix)
         else:
@@ -219,10 +219,15 @@ def run_experiment(device, arg_space, params):
 
     prefix = 'modelRes' #Using generic, not sure if we need it as an argument or part of the params dict
     train_loader, test_loader, valid_loader, modelwv, output_dir = load_datasets(arg_space, use_embds, batch_size, kmer_len, embd_size, embd_window)
+    #print(params)
     if net_type == 'basset':
+        if arg_space.verbose:
+            print("Using Basset-like model.")
         net = Basset(params, wvmodel=modelwv, useEmbeddings=use_embds).to(device)
     else:
-        net = AttentionNet(params, wvmodel=modelwv, useEmbeddings=use_embds).to(device)
+        if arg_space.verbose:
+            print("Using Attention-based model.")
+        net = AttentionNet(params, wvmodel=modelwv, useEmbeddings=use_embds, device=device).to(device)
     criterion = nn.CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(net.parameters())
     ##-------Main train/test loop----------##
@@ -255,6 +260,7 @@ def run_experiment(device, arg_space, params):
     except:
         print("No pre-trained model found at %s! Please run with --mode set to train."%output_dir)
         return
+    #print(net)
     res_test = evaluateRegular(net, device, test_loader, criterion, output_dir+"/Stored_Values",
                                getCNN=get_CNNout, storeCNNout=arg_space.storeCNN, getSeqs=get_sequences, useEmb=use_embds)
     test_loss = res_test[0]

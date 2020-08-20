@@ -44,7 +44,7 @@ class DatasetLoadAll(Dataset):
                 header = self.df['header'][i]
                 self.Header.append(header)
                 X = self.df_seq_final['sequence'][self.df_seq_final['header']==header].array[0].upper()
-                X = X.replace('N',list(self.DNAalphabet.keys())[randint(0,3)])
+                #X = X.replace('N',list(self.DNAalphabet.keys())[randint(0,3)])
                 X = X.replace('N',list(self.DNAalphabet.keys())[random.choice([0,1,2,3])])
                 X = X.replace('S',list(self.DNAalphabet.keys())[random.choice([1,2])])
                 X = X.replace('W',list(self.DNAalphabet.keys())[random.choice([0,3])])
@@ -132,7 +132,7 @@ class DatasetLazyLoad(Dataset):
             y = self.one_hot_encode_labels(y)
         header = self.df['header'][idx]
         X = self.df_seq_final['sequence'][self.df_seq_final['header']==header].array[0].upper()
-        X = X.replace('N',list(self.DNAalphabet.keys())[randint(0,3)])
+        #X = X.replace('N',list(self.DNAalphabet.keys())[randint(0,3)])
         X = X.replace('N',list(self.DNAalphabet.keys())[random.choice([0,1,2,3])])
         X = X.replace('S',list(self.DNAalphabet.keys())[random.choice([1,2])])
         X = X.replace('W',list(self.DNAalphabet.keys())[random.choice([0,3])])

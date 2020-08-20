@@ -9,7 +9,7 @@ multihead_size|100|#MultiHeadSize
 use_pooling|False|#Use pooling at single head level
 pooling_val|6|#if use pooling at single head level, size of pooling
 readout_strategy|normalize|#read out layer type/strategy
-use_RNN|True|#use RNN in the model
+use_RNN|False|#use RNN in the model
 use_CNN|True|#use CNN layer
 use_posEnc|False|#use positional encoding
 CNN_filters|200|#number of CNN layer filters
