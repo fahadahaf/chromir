@@ -36,7 +36,7 @@ def parseArgs():
 
 def roc_prc_curve(arg_space, exp_dict):
     #some colors to be used for individual curves.
-    colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'dodgerblue']
+    colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'teal','dimgray']
     out_dir = arg_space.out_dir.strip('/')+'/'
 
     if not os.path.exists(out_dir):
