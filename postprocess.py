@@ -25,6 +25,8 @@ def parseArgs():
                         action='store',help="output directory. Default: results/ directory (will be created if doesn't exists).", default='results')
     parser.add_argument('-t','--type', dest='type',type=str,
                         action='store',help="Plot type: either ROC or PRC. Default: ROC", default='ROC')
+    parser.add_argument('--suffix', dest='suffix',type=str,
+                        action='store',help="A a unique suffix to add to plot name. Default '' (empty string)", default='')
     parser.add_argument('--curve20',dest='useCurve20', action='store_true', 
                         default=False, help="Plot ROC/PRC cuve at maxed at 0.2 on X-axis (zoom-in version). Default: False")                        					
     parser.add_argument('infofile',type=str,
@@ -35,6 +37,8 @@ def parseArgs():
 
 
 def roc_prc_curve(arg_space, exp_dict):
+    suffix = '_'+arg_space.suffix if len(arg_space.suffix) > 0 else arg_space.suffix
+    curve20 = '_curve20' if arg_space.useCurve20 else ''
     #some colors to be used for individual curves.
     colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'teal','dimgray']
     out_dir = arg_space.out_dir.strip('/')+'/'
@@ -91,8 +95,6 @@ def roc_prc_curve(arg_space, exp_dict):
             plt.ylabel('Precision',fontsize=10.5)
             plt.legend(loc=1, fontsize=10.5)
         #plt.title('Precision-Recall curves')
-        plt.savefig(out_dir+'%s_curves_selected_curve20.pdf'%pckl_text.upper())
-        plt.savefig(out_dir+'%s_curves_selected_curve20.png'%pckl_text.upper())
     else:
         plt.xlim(0, 1)
         plt.ylim(0, 1)
@@ -103,10 +105,10 @@ def roc_prc_curve(arg_space, exp_dict):
         else:
             plt.xlabel('Recall',fontsize=10.5)
             plt.ylabel('Precision',fontsize=10.5)
-            plt.legend(loc=1, fontsize=10.5)
+            plt.legend(loc=3, fontsize=10.5)
         #plt.title('Precision-Recall curves')
-        plt.savefig(out_dir+'%s_curves_selected.pdf'%pckl_text.upper())
-        plt.savefig(out_dir+'%s_curves_selected.png'%pckl_text.upper())
+    plt.savefig(out_dir+'%s_curves_selected%s%s.pdf'%(pckl_text.upper(),curve20,suffix))
+    plt.savefig(out_dir+'%s_curves_selected%s%s.png'%(pckl_text.upper(),curve20,suffix))
     plt.clf()
 
 
