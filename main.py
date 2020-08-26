@@ -4,8 +4,8 @@ from argparse import ArgumentParser
 from torch.backends import cudnn
 
 #local imports
-from experiment import run_experiment, motif_analysis
-from utils import get_params_dict
+from experiment import motif_analysis, run_experiment
+from utils import annotate_motifs, get_params_dict
 
 
 
@@ -46,7 +46,7 @@ def parseArgs():
     parser.add_argument('--database',dest='tfDatabase',type=str,action='store',
                         help="Search CNN motifs against known TF database. Default is Human CISBP TFs.", default=None)
     parser.add_argument('--annotate',dest='annotateTomTom',type=str,action='store',
-                        default=None, help="Annotate tomtom motifs. The options are: 1. path to annotation file, 2. No (not to annotate the output) 3. None (default where human CISBP annotations are used)")
+                        default=None, help="Annotate tomtom motifs. The value of this variable should be path to the database file used for annotation. Default is None.")
     parser.add_argument('-s','--store', dest='storeCNN',
                         action='store_true',default=False,
                         help="Store per batch CNN outpout matrices. If false, the are kept in the main memory.")
@@ -86,9 +86,19 @@ def main():
     arg_space = parseArgs()
     #create params dictionary
     params_dict = get_params_dict(arg_space.hparamfile)
-    test_resBlob = run_experiment(device, arg_space, params_dict)
+    test_resBlob, CNNWeights = run_experiment(device, arg_space, params_dict)
     if arg_space.motifAnalysis:
-        motif_dir,numPosExamples = motif_analysis(test_resBlob, arg_space)
+        motif_dir_pos, num_examples_pos = motif_analysis(test_resBlob, CNNWeights, arg_space)
+        motif_dir_neg, num_examples_neg = motif_analysis(test_resBlob, CNNWeights,  arg_space, for_negative=True)
+    
+    if arg_space.annotateTomTom != None:
+        if arg_space.verbose:
+            print("Annotating motifs...")
+        annotate_motifs(arg_space.annotateTomTom, motif_dir_pos)
+        annotate_motifs(arg_space.annotateTomTom, motif_dir_neg)
+
+        
+ 
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ def parseArgs():
     parser.add_argument('-t','--type', dest='type',type=str,
                         action='store',help="Plot type: either ROC or PRC. Default: ROC", default='ROC')
     parser.add_argument('--suffix', dest='suffix',type=str,
-                        action='store',help="A a unique suffix to add to plot name. Default '' (empty string)", default='')
+                        action='store',help="A unique suffix to add to plot name. Default '' (empty string)", default='')
     parser.add_argument('--curve20',dest='useCurve20', action='store_true', 
                         default=False, help="Plot ROC/PRC cuve at maxed at 0.2 on X-axis (zoom-in version). Default: False")                        					
     parser.add_argument('infofile',type=str,
@@ -40,7 +40,7 @@ def roc_prc_curve(arg_space, exp_dict):
     suffix = '_'+arg_space.suffix if len(arg_space.suffix) > 0 else arg_space.suffix
     curve20 = '_curve20' if arg_space.useCurve20 else ''
     #some colors to be used for individual curves.
-    colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'teal','dimgray']
+    colors = ['darkorange', 'saddlebrown', 'crimson', 'rebeccapurple', 'limegreen', 'teal', 'dimgray']
     out_dir = arg_space.out_dir.strip('/')+'/'
 
     if not os.path.exists(out_dir):

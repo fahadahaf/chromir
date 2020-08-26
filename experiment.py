@@ -283,16 +283,19 @@ def run_experiment(device, arg_space, params):
     with open(output_dir+'/'+prefix+'_prc.pckl','wb') as f:
         pickle.dump(prc_dict,f)
     np.savetxt(output_dir+'/'+prefix+'_results.txt',some_res,fmt='%s',delimiter='\t')
-    return res_test
+
+    CNNWeights = net.layer1[0].weight.cpu().detach().numpy()
+    return res_test, CNNWeights
 
 
-def motif_analysis(res_test, argSpace):
+def motif_analysis(res_test, CNNWeights, argSpace, for_negative=False):
     """
     Infer regulatory motifs by analyzing the first CNN layer filters.
 
     Args:
         res_test: (list) Returned by the experiment function after testing the model.
         argSpace: The ArgParser object containing values of all the user-specificed arguments.
+        for_negative: (bool) Determines if the motif analysis is for the positive or negative set.
     """
     output_dir = 'results/'+argSpace.directory
     if not os.path.exists(output_dir):
@@ -304,11 +307,14 @@ def motif_analysis(res_test, argSpace):
     per_batch_labelPreds = res_test[3][k]
     #per_batch_Embdoutput = res_test[5][k]
     CNNoutput = res_test[4][k]
-    if argSpace.storeInterCNN:
+    if argSpace.storeCNN:
         with open(CNNoutput,'rb') as f:
             CNNoutput = pickle.load(f)
     Seqs = np.asarray(res_test[-1][k])
-    tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==0 and per_batch_labelPreds[i][1]<(1-pos_score_cutoff))]
+    if for_negative:
+        tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==0 and per_batch_labelPreds[i][1]<(1-pos_score_cutoff))]
+    else:
+        tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==1 and per_batch_labelPreds[i][1]>(1-pos_score_cutoff))]
     NumExamples += len(tp_indices)	
     CNNoutput = CNNoutput[tp_indices]
     Seqs = Seqs[tp_indices]
@@ -319,11 +325,15 @@ def motif_analysis(res_test, argSpace):
             
         per_batch_labelPreds = res_test[3][k]
         per_batch_CNNoutput = res_test[4][k]
-        with open(per_batch_CNNoutput,'rb') as f:
-            per_batch_CNNoutput = pickle.load(f)
+        if argSpace.storeCNN:
+            with open(per_batch_CNNoutput,'rb') as f:
+                per_batch_CNNoutput = pickle.load(f)
         
         per_batch_seqs = np.asarray(res_test[-1][k])
-        tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==0 and per_batch_labelPreds[i][1]<(1-pos_score_cutoff))]
+        if for_negative:
+            tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==0 and per_batch_labelPreds[i][1]<(1-pos_score_cutoff))]
+        else:
+            tp_indices = [i for i in range(0,per_batch_labelPreds.shape[0]) if (per_batch_labelPreds[i][0]==1 and per_batch_labelPreds[i][1]>(1-pos_score_cutoff))]
         NumExamples += len(tp_indices)
         CNNoutput = np.concatenate((CNNoutput,per_batch_CNNoutput[tp_indices]),axis=0)
         Seqs = np.concatenate((Seqs,per_batch_seqs[tp_indices]))
@@ -336,22 +346,11 @@ def motif_analysis(res_test, argSpace):
         tomtomPath = '/s/jawar/h/nobackup/fahad/MEME_SUITE/meme-5.0.3/src/tomtom'
     else:
         tomtomPath = argSpace.tomtomPath
-    motif_dir = output_dir + '/Motif_Analysis'
+    if for_negative:
+        motif_dir = output_dir + '/Motif_Analysis_Negative'
+    else:
+        motif_dir = output_dir + '/Motif_Analysis'
     get_motif(CNNWeights, CNNoutput, Seqs, dbpath, dir1 = motif_dir, embd=argSpace.useEmbeddings,
                 data='DNA', tomtom=tomtomPath, tomtompval=argSpace.tomtomPval, tomtomdist=argSpace.tomtomDist) 
-    ###-----------------Adding TF details to TomTom results----------------###
-    if argSpace.annotateTomTom != 'No':
-        tomtom_res = np.loadtxt(motif_dir+'/tomtom/tomtom.tsv',dtype=str,delimiter='\t')
-        if argSpace.annotateTomTom == None:
-            database = np.loadtxt('../Basset_Splicing_IR-iDiffIR/Analysis_For_none_network-typeB_lotus_posThresh-0.60/MEME_analysis/Homo_sapiens_2019_01_14_4_17_pm/TF_Information_all_motifs.txt',dtype=str,delimiter='\t')
-        else:
-            database = argSpace.annotateTomTom
-        final = []                                     
-        for entry in tomtom_res[1:]:
-            motifID = entry[1]                         
-            res = np.argwhere(database[:,3]==motifID)
-            TFs = ','.join(database[res.flatten(),6])
-            final.append(entry.tolist()+[TFs])
-        np.savetxt(motif_dir+'/tomtom/tomtom_annotated.tsv',final,delimiter='\t',fmt='%s')
     return motif_dir, NumExamples
 
