@@ -294,6 +294,7 @@ def motif_analysis(res_test, CNNWeights, argSpace, for_negative=False):
 
     Args:
         res_test: (list) Returned by the experiment function after testing the model.
+        CNNWeights: (numpy.ndarray) Weights of the first CNN layer.
         argSpace: The ArgParser object containing values of all the user-specificed arguments.
         for_negative: (bool) Determines if the motif analysis is for the positive or negative set.
     """
