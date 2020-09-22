@@ -11,6 +11,7 @@ pooling_val|6|#if use pooling at single head level, size of pooling
 readout_strategy|normalize|#read out layer type/strategy
 use_RNN|False|#use RNN in the model
 use_CNN|True|#use CNN layer
+CNN1_useexponential|False|#use Exponential function as an activation in the first CNN layer (ReLU is used if False)
 use_posEnc|False|#use positional encoding
 CNN_filters|200|#number of CNN layer filters
 CNN_filtersize|13|#size of the CNN filter

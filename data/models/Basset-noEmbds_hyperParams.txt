@@ -6,7 +6,7 @@ embd_kmersize|3|#size of the word2vec kmer
 CNN1_filters|200|#number of 1st CNN layer filters
 CNN1_filtersize|13|#size of the 1st CNN layer filters
 CNN1_padding|6|#number of padded 0's to each end (future: auto-infer, see utils for a function)
-CNN1_usesoftplus|True|#use Softplus() as activation in the first CNN layer (ReLU is used if False)
+CNN1_useexponential|False|#use Exponential function as an activation in the first CNN layer (ReLU is used if False)
 CNN1_poolsize|6|#maxpooling size for the 1st CNN layer
 CNN2_filters|100|#number of 2nd CNN layer filters
 CNN2_filtersize|5|#size of the 2nd CNN layer filters

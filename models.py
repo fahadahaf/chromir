@@ -6,6 +6,85 @@ from torch.autograd import Variable
 from torch.autograd import Function # import Function to create custom activations
 
 
+##----------------Custom Activations--------------------##
+
+#Original soft exponential with trainable parameters
+#Taken from: https://www.kaggle.com/aleksandradeis/extending-pytorch-with-custom-activation-functions
+class SoftExponential(nn.Module):
+    '''
+    Implementation of soft exponential activation.
+
+    Shape:
+        - Input: (N, *) where * means, any number of additional
+          dimensions
+        - Output: (N, *), same shape as the input
+
+    Parameters:
+        - alpha - trainable parameter
+
+    References:
+        - See related paper:
+        https://arxiv.org/pdf/1602.01321.pdf
+
+    Examples:
+        >>> a1 = soft_exponential(256)
+        >>> x = torch.randn(256)
+        >>> x = a1(x)
+    '''
+    def __init__(self, in_features, alpha = None):
+        '''
+        Initialization.
+        INPUT:
+            - in_features: shape of the input
+            - aplha: trainable parameter
+            aplha is initialized with zero value by default
+        '''
+        super(SoftExponential,self).__init__()
+        self.in_features = in_features
+
+        # initialize alpha
+        if alpha == None:
+            self.alpha = Parameter(torch.tensor(0.0)) # create a tensor out of alpha
+        else:
+            self.alpha = Parameter(torch.tensor(alpha)) # create a tensor out of alpha
+            
+        self.alpha.requiresGrad = True # set requiresGrad to true!
+
+    def forward(self, x):
+        '''
+        Forward pass of the function.
+        Applies the function to the input elementwise.
+        '''
+        if (self.alpha == 0.0):
+            return x
+
+        if (self.alpha < 0.0):
+            return - torch.log(1 - self.alpha * (x + self.alpha)) / self.alpha
+
+        if (self.alpha > 0.0):
+            return (torch.exp(self.alpha * x) - 1)/ self.alpha + self.alpha
+
+
+#soft exponential modified: alpha value greater than 0 and not trainable
+class SoftExponentialMod(nn.Module):
+    def __init__(self, alpha=0.5):
+        super().__init__()
+        self.alpha = torch.tensor(alpha) # create a tensor out of alpha
+
+    def forward(self, x):
+        return (torch.exp(self.alpha * x) - 1)/ self.alpha + self.alpha
+
+
+#regular exponential function (As per Peter Koo's paper)
+class Exponential(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.exp(x)
+
+##------------------------------------------------------##
+
 
 class Basset(nn.Module):
     def __init__(self, params, wvmodel=None, useEmbeddings = False):
@@ -14,7 +93,7 @@ class Basset(nn.Module):
         self.CNN1filterSize = params['CNN1_filtersize']
         self.CNN1poolSize = params['CNN1_poolsize']
         self.CNN1padding = params['CNN1_padding']
-        self.CNN1useSoftplus = params['CNN1_usesoftplus']
+        self.CNN1useExponential = params['CNN1_useexponential']
         self.CNN2filters = params['CNN2_filters']
         self.CNN2filterSize = params['CNN2_filtersize']
         self.CNN2poolSize = params['CNN2_poolsize']
@@ -44,7 +123,7 @@ class Basset(nn.Module):
                       padding=self.CNN1padding,
                       bias=False), #if using batchnorm, no need to use bias in a CNN
             nn.BatchNorm1d(num_features=self.CNN1filters),
-            nn.ReLU() if self.CNN1useSoftplus==False else nn.Softplus(),
+            nn.ReLU() if self.CNN1useExponential==False else Exponential(),
             nn.MaxPool1d(kernel_size=self.CNN1poolSize))
         self.dropout1 = nn.Dropout(p=0.2)
 
@@ -138,6 +217,7 @@ class AttentionNet(nn.Module): #for the model that uses CNN, RNN (optionally), a
         self.kmerSize = params['embd_kmersize']
         self.useRNN = params['use_RNN']
         self.useCNN = params['use_CNN']
+        self.CNN1useExponential = params['CNN1_useexponential']
         self.usePE = params['use_posEnc']
         self.useCNNpool = params['use_CNNpool']
         self.RNN_hiddenSize = params['RNN_hiddensize']
@@ -163,13 +243,15 @@ class AttentionNet(nn.Module): #for the model that uses CNN, RNN (optionally), a
         if self.useCNN and self.useCNNpool:
             self.layer1  = nn.Sequential(nn.Conv1d(in_channels=self.numInputChannels, out_channels=self.numCNNfilters,
                                          kernel_size=self.filterSize, padding=self.CNNpadding, bias=False),nn.BatchNorm1d(num_features=self.numCNNfilters),
-                                         nn.ReLU(),nn.MaxPool1d(kernel_size=self.CNNpoolSize))
+                                         nn.ReLU() if self.CNN1useExponential==False else Exponential(),
+                                         nn.MaxPool1d(kernel_size=self.CNNpoolSize))
             self.dropout1 = nn.Dropout(p=0.2)
         
         if self.useCNN and self.useCNNpool == False:
             self.layer1  = nn.Sequential(nn.Conv1d(in_channels=self.numInputChannels, out_channels=self.numCNNfilters,
                                          kernel_size=self.filterSize, padding=self.CNNpadding, bias=False),
-                                         nn.BatchNorm1d(num_features=self.numCNNfilters),nn.ReLU())
+                                         nn.BatchNorm1d(num_features=self.numCNNfilters),
+                                         nn.ReLU() if self.CNN1useExponential==False else Exponential())
             self.dropout1 = nn.Dropout(p=0.2)
 		
         if self.useRNN:
