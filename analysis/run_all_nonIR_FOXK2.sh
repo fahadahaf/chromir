@@ -1,0 +1,90 @@
+#1
+python ChIP_occupancy_pipeline/extract_unionIR_idiffIR.py -l Heat Control Ensembl_GrCh37_annotations.gtf K562_alignments_replicate1.bam K562_alignment_replicate2.bam -o extract_IR_test -v -k 2 8
+
+
+##2
+python ChIP_occupancy_pipeline/extract_unionIR_idiffIR_neg.py -l Heat Control Ensembl_GrCh37_annotations.gtf K562_alignments_replicate1.bam K562_alignment_replicate2.bam -o extract_IR_test -v -k 2 8
+
+#3
+python ChIP_occupancy_pipeline/Control.py FOXK2 K562 &
+
+#4(a)
+python ChIP_occupancy_pipeline/Control_neg.py FOXK2 K562 &
+
+#4(b)
+python ChIP_occupancy_pipeline/Control_neg_all.py FOXK2 K562 &
+
+wait #wait for the above 3 programs to finish
+
+#5
+python ChIP_occupancy_pipeline/extract_unionIR_idiffIR_expressedGenes.py -l Heat Control Ensembl_GrCh37_annotations.gtf K562_alignments_replicate1.bam K562_alignment_replicate2.bam -o extract_IR_test -v -k 2 8
+
+#6
+#For DHSs_in_IR
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 1.0 FOXK2_in_IR.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 5.0 FOXK2_in_IR.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 10.0 FOXK2_in_IR.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 20.0 FOXK2_in_IR.txt HotSpot_Data &
+wait
+#For DHSs_in_IE_Neg
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 1.0 FOXK2_in_IE_Neg.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 5.0 FOXK2_in_IE_Neg.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 10.0 FOXK2_in_IE_Neg.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 20.0 FOXK2_in_IE_Neg.txt HotSpot_Data &
+wait
+#For DHSs_in_IE_Neg_ALL
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 1.0 FOXK2_in_IE_Neg_ALL.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 5.0 FOXK2_in_IE_Neg_ALL.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 10.0 FOXK2_in_IE_Neg_ALL.txt HotSpot_Data &
+python ChIP_occupancy_pipeline/expressed_gene_filtering.py 20.0 FOXK2_in_IE_Neg_ALL.txt HotSpot_Data &
+wait
+
+#7
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_1.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_1.0_expressed_noBoundaryModified.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_5.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_5.0_expressed_noBoundaryModified.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_10.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_10.0_expressed_noBoundaryModified.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_20.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IR_on_expression.py HotSpot_Data/FOXK2_in_IR_20.0_expressed_noBoundaryModified.txt &
+wait
+
+#7b
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_1.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_5.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_10.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_20.0_expressed.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_1.0_expressed_noBoundaryModified.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_5.0_expressed_noBoundaryModified.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_10.0_expressed_noBoundaryModified.txt &
+python ChIP_occupancy_pipeline/filter_IE_on_expression.py HotSpot_Data/FOXK2_in_IE_Neg_20.0_expressed_noBoundaryModified.txt &
+wait
+
+#Fixing "start within gene" part (IR)
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_1.0_expressed_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_5.0_expressed_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_10.0_expressed_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_20.0_expressed_intronCoverage.txt
+
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_1.0_expressed_noBoundaryModified_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_5.0_expressed_noBoundaryModified_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_10.0_expressed_noBoundaryModified_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IR_20.0_expressed_noBoundaryModified_intronCoverage.txt
+
+#Fixing "start within gene" part (IE)
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_1.0_expressed_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_5.0_expressed_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_10.0_expressed_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_20.0_expressed_intronCoverage.txt
+
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_1.0_expressed_noBoundaryModified_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_5.0_expressed_noBoundaryModified_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_10.0_expressed_noBoundaryModified_intronCoverage.txt
+python ChIP_occupancy_pipeline/filter_events_noBoundaryV2.py HotSpot_Data/FOXK2_in_IE_Neg_20.0_expressed_noBoundaryModified_intronCoverage.txt
+
+#10 ChIP overlap significance testing
+python ChIP_occupancy_pipeline/Content_and_HyperGeoT.py FOXK2
+python ChIP_occupancy_pipeline/Content_and_HyperGeoT_noFirstIntron.py FOXK2
+python ChIP_occupancy_pipeline/Content_and_HyperGeoT_withEventSizeAdjustment.py FOXK2
+python ChIP_occupancy_pipeline/Content_and_HyperGeoT_withEventSizeAdjustment_noFirstIntron.py FOXK2
