@@ -16,6 +16,10 @@ Fahad Ullah, Maayan Salton, Anireddy S.N. Reddy, Asa Ben-Hur; Evidence for the r
 [statsmodels (version 0.9.0)](http://www.statsmodels.org/stable/index.html)  
 [gensim (version 3.8.1)](https://radimrehurek.com/gensim/)
 
+and for motif analysis:  
+[MEME suite](http://meme-suite.org/doc/download.html)  
+[WebLogo](https://weblogo.berkeley.edu)
+
 ## Usage
 ```
 usage: main.py [-h] [-v] [-o DIRECTORY] [-m MODE] [--deskload] [-w NUMWORKERS]
