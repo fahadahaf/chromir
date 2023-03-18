@@ -86,5 +86,5 @@ optional arguments:
 ## Tutorial
 Running *chromir* with motif analysis. Note that the output directory is stored under **results/**. 
 ```
-run main.py -v -o Basset_noEmbd -m train --motifanalysis --nettype basset data/Labelled_Data_IR_iDiffIR_corrected data/models/Basset-noEmbds_hyperParams.txt
+python main.py -v -o Basset_noEmbd -m train --motifanalysis --nettype basset data/Labelled_Data_IR_iDiffIR_corrected data/models/Basset-noEmbds_hyperParams.txt
 ```
