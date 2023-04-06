@@ -2,7 +2,7 @@
 Code repository for our work on the co-transcriptional regulation of Intron Retention using chromatin accessibility data. 
 
 ## Manuscript
-Fahad Ullah, Saira Jabeen, Maayan Salton, Anireddy S.N. Reddy, Asa Ben-Hur; Evidence for the role of transcription factors in the co-transcriptional regulation of intron retention, bioRxiv 2021; [https://www.biorxiv.org/content/10.1101/2021.11.18.469150v1](https://www.biorxiv.org/content/10.1101/2021.11.18.469150v1)
+Fahad Ullah, Saira Jabeen, Maayan Salton, Anireddy S.N. Reddy, Asa Ben-Hur; Evidence for the role of transcription factors in the co-transcriptional regulation of intron retention, Genome Biology 2023; [https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02885-1](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02885-1)
 
 ## Dependency
 *chromir* is written in python 3. The following python packages are required:  
