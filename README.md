@@ -84,7 +84,20 @@ optional arguments:
 ```
 
 ## Tutorial
-Running *chromir* with motif analysis. Note that the output directory is stored under **results/**. 
+You can skip 1 and 2 since the data has been provided.
+1. To generate the data, first run the preprocessing script:
+```
+python preprocess.py IR_events_file.txt encode_intragenic_DHSs.bed
+```
+This will create the final dataset file `Labelled_Data_IR_iDiffIR_corrected.txt` in **'data/'** directory. 
+Check out the **scripts/** directory for more details on the IR events, encode DHSs file formats, and how to get the intragenic DHSs.
+
+2. To generate the fasta file with DNA sequences for the corresponding DHSs, use bedtools: 
+```
+bedtools getfasta -fi hg19_human_reference.fa -bed data/Labelled_Data_IR_iDiffIR_corrected.txt -s -fo data/Labelled_Data_IR_iDiffIR_corrected.fa
+```
+
+3. Running *chromir* with motif analysis. Note that the output directory is stored under **results/**. 
 ```
 python main.py -v -o Basset_noEmbd -m train --motifanalysis --nettype basset data/Labelled_Data_IR_iDiffIR_corrected data/models/Basset-noEmbds_hyperParams.txt
 ```
