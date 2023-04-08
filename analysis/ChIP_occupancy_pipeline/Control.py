@@ -97,7 +97,7 @@ def resolve_parts(pre_start,pre_end,intron_start,intron_end,post_start,post_end,
 
 print "Loading gene model..."
 
-geneModel = loadGeneModels('/s/jawar/p/nobackup/altsplice1/fahad/Human_hg19/Annotations/MISOHelp/ensGene.gtf',verbose=True)
+geneModel = loadGeneModels('../ensGene.gtf',verbose=True)
 
 Diff_IR = np.loadtxt('Union_IR_Events.txt',dtype=str,delimiter='\t')
 
@@ -105,7 +105,7 @@ TF_name = sys.argv[1] #MAZ, EGR1 etc
 celltype = sys.argv[2] #K562 in this case
 
 #DHS_List = np.loadtxt('GSE34318_RAW/wdBuds_Pooled/F-Seq/filtered_DHSs.csv',dtype=str,delimiter=',')
-DHS_List = np.loadtxt('/s/jawar/h/nobackup/fahad/Human_Chromatin/Encode_CHiP_TFs/Encode_All_processed_data/'+TF_name+'_mutliCellLines_peaks.bed',dtype=str,delimiter='\t')
+DHS_List = np.loadtxt('../'+TF_name+'_mutliCellLines_peaks.bed',dtype=str,delimiter='\t')
 
 tracker = [['GeneID','Event','is_within_gene','start_in_gene','end_in_gene','gene_Coord','in_5-Exon','in_Intron','in_3-Exon','TF_Coordinates','Pre_Exon','Post_Exon','TF_p-val','TF_Sig-val','TF_peak-val','gene_Strand']]
 

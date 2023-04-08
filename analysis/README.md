@@ -11,9 +11,12 @@ The following python 2.7 packages are required:
 [scipy (version 0.18.1)](www.scipy.org)  
 
 ##Example
+**Note:** The analysis bash script assumes that the following files are available in the current directory:  
+- "ensGene.gtf": Human Ensembl hg19/GrCh37 genome annotations
+- "FOXK2_mutliCellLines_peaks.bed": All FOXK2 ChIP peaks. For a different transcription factor, this file should be named accordingly.  
+
 To generate ChIP occupancy stats for FOXK2, run the following shell script:
 ```
 sh run_all_nonIR_FOXK2.sh
 ```
-
 For other TFs, this script needs to be modified accordingly. 
