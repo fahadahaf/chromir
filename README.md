@@ -84,13 +84,13 @@ optional arguments:
 ```
 
 ## Tutorial
-You can skip 1 and 2 since the data has been provided.
+You can skip **1** and **2** since the data has been provided.
 1. To generate the data, first run the preprocessing script:
 ```
 python preprocess.py IR_events_file.txt encode_intragenic_DHSs.bed
 ```
 This will create the final dataset file `Labelled_Data_IR_iDiffIR_corrected.txt` in **data/** directory.  
-Check out the **scripts/** directory for more details on the IR events file format, encode DHSs data, and how to get the intragenic DHSs.
+Check out the **preprocessing/** directory for more details on the IR events file format, encode DHSs data, and how to get the intragenic DHSs.
 
 2. To generate the fasta file with DNA sequences for the corresponding DHSs, use [bedtools](https://bedtools.readthedocs.io/en/latest/): 
 ```
