@@ -84,7 +84,7 @@ optional arguments:
 ```
 
 ## Tutorial
-You can skip **1** and **2** since the data has been provided.
+To replicate the experiment, you can skip **1** and **2** since the data has been provided.
 1. To generate the data, first run the preprocessing script:
 ```
 python preprocess.py IR_events_file.txt encode_intragenic_DHSs.bed
