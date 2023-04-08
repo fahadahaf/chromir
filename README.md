@@ -101,3 +101,5 @@ bedtools getfasta -fi hg19_human_reference.fa -bed data/Labelled_Data_IR_iDiffIR
 ```
 python main.py -v -o Basset_noEmbd -m train --motifanalysis --nettype basset data/Labelled_Data_IR_iDiffIR_corrected data/models/Basset-noEmbds_hyperParams.txt
 ```
+
+4. For TF ChIP occupancy analyses, check out the **analysis/** directory.
