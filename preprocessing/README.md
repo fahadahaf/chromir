@@ -16,7 +16,7 @@ Arguments to the script are:
 
 ## Human IR events data
 We used Splicegrapher to get list of IR events from human genome. Since Splicegrapher is written in Python 2.7, you can use any other tool that will give you list of IR events, using either just human genome annotations, or both annotations and evidence from RNA-seq data.  
-Note that the IR events should have the following format:  
+Note that the IR events file should have the following column format:  
 ```
 Gene_ID, Pre_Exon, Intron, Post_Exon, Strand, Chromosome, First_Intron
 ```
