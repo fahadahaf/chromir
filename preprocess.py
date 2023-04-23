@@ -48,7 +48,7 @@ def process_IR(data, intragenic, save_results=False, verbose=True, gene_cols=[0,
         np.savetxt('final_overlapping_DHSs_IR_iDiffIR.txt',final_list,fmt='%s',delimiter='\t') #events overlapping retained introns
         np.savetxt('final_overlapping_DHSs_IR_iDiffIR_V2.txt',final_list_v2,fmt='%s',delimiter='\t') #events overlapping the event (flanking exons) but not the retained intron
     
-    return final_list, final_list_v2
+    return np.asarray(final_list), np.asarray(final_list_v2)
 
 def remove_overlap_duplicates(data, verbose=True):
 
@@ -71,7 +71,7 @@ def remove_overlap_duplicates(data, verbose=True):
     #np.savetxt(outfname,final_data,fmt='%s')
     return final_data
 
-def create_dataset(IRdata, intragenicDHSs, load_from_file=False, save_data=True, remove_duplicates=True):
+def create_dataset(IRdata, intragenicDHSs, load_from_file=False, save_data=True, remove_duplicates=True, has_first_intron=False):
     if load_from_file:
         try:
             pos_data_V1 = np.loadtxt('final_overlapping_DHSs_IR_iDiffIR.txt',dtype=str) #these events (true positive) are those which overlap a DHS with the retained intron
@@ -79,7 +79,11 @@ def create_dataset(IRdata, intragenicDHSs, load_from_file=False, save_data=True,
         except FileNotFoundError:
             print("DHS and IR overlapping files not found! set load_from_file=False to re-run the overlapping analysis.")
     else:
-        pos_data_V1, pos_data_V2 = process_IR(IRdata, intragenicDHSs, save_results=False)
+        if has_first_intron:
+            gene_cols=[0,-2]
+        else:
+            gene_cols=[0,-1]
+        pos_data_V1, pos_data_V2 = process_IR(IRdata, intragenicDHSs, save_results=False, gene_cols=gene_cols)
 
     if remove_duplicates:
         pos_data_V1 = remove_overlap_duplicates(pos_data_V1)
@@ -143,10 +147,11 @@ def create_dataset(IRdata, intragenicDHSs, load_from_file=False, save_data=True,
 def main():
     IRdatafile = sys.argv[1] #'/s/jawar/p/nobackup/altsplice1/fahad/Human_hg19/Annotations/MISOHelp/IR_events_iDiffIR.txt'
     intragenicDHSfile = sys.argv[2] #'../encode_roadmap_inGenesOnly_orig.bed'
+    has_first_intron = sys.argv[3].lower() == 'true'
     IRdata = np.loadtxt(IRdatafile, dtype=str, skiprows=1, delimiter='\t')
     intragenicDHSs = np.loadtxt(intragenicDHSfile, dtype=str)
 
-    result = create_dataset(IRdata, intragenicDHSs, load_from_file=False, save_data=True, remove_duplicates=True)
+    result = create_dataset(IRdata, intragenicDHSs, load_from_file=False, save_data=True, remove_duplicates=True, has_first_intron=has_first_intron)
 
     if isinstance(result, str):
         fname = result
